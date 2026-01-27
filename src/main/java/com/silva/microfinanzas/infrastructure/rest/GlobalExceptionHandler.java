@@ -29,10 +29,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationExceptions(
             MethodArgumentNotValidException ex) {
+        log.error("Validation error: {}", ex.getMessage());
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getAllErrors().forEach((error) -> {
             String fieldName = ((FieldError) error).getField();
             String errorMessage = error.getDefaultMessage();
+            log.error("Field: {} - Error: {}", fieldName, errorMessage);
             errors.put(fieldName, errorMessage);
         });
 
@@ -40,6 +42,24 @@ public class GlobalExceptionHandler {
         response.put("timestamp", LocalDateTime.now());
         response.put("status", HttpStatus.BAD_REQUEST.value());
         response.put("errors", errors);
+
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    /**
+     * Maneja excepciones de lectura de JSON (formato inválido, enums incorrectos,
+     * fechas mal formadas).
+     */
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleHttpMessageNotReadable(
+            org.springframework.http.converter.HttpMessageNotReadableException ex) {
+        log.error("JSON parse error: ", ex);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now());
+        response.put("status", HttpStatus.BAD_REQUEST.value());
+        response.put("message", "Malformed JSON request. Check date formats and enum values.");
+        response.put("debug", ex.getMessage());
 
         return ResponseEntity.badRequest().body(response);
     }
@@ -111,4 +131,3 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 }
-
